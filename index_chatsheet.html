@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Memory Allocation System Pro</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    font-family: Arial;
+    background: linear-gradient(135deg, #1d2671, #c33764);
+    text-align: center;
+    color: white;
+}
+
+/* LOGIN BOX */
+#authBox {
+    width: 320px;
+    margin: 80px auto;
+    padding: 25px;
+    backdrop-filter: blur(10px);
+    background: rgba(255,255,255,0.1);
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+}
+
+#mainApp { display: none; }
+
+input, select {
+    padding: 10px;
+    margin: 10px;
+    width: 230px;
+    border-radius: 5px;
+    border: none;
+}
+
+button {
+    padding: 10px 15px;
+    margin: 5px;
+    background: #00c9a7;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+button:hover { background: #00a386; }
+
+/* MEMORY BLOCK */
+.memory {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.block {
+    width: 90px;
+    height: 90px;
+    margin: 8px;
+    background: #2ecc71;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    transition: 0.5s;
+    font-weight: bold;
+}
+
+.used { background: #e74c3c !important; }
+
+/* TABLE */
+table {
+    margin: 20px auto;
+    border-collapse: collapse;
+    background: white;
+    color: black;
+}
+
+td, th {
+    padding: 10px;
+    border: 1px solid gray;
+}
+
+/* CHART */
+#chartContainer {
+    width: 500px;
+    margin: auto;
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="authBox">
+<h2>Login System</h2>
+<input id="user" placeholder="Username"><br>
+<input id="pass" type="password" placeholder="Password"><br>
+<button onclick="register()">Register</button>
+<button onclick="login()">Login</button>
+<p id="msg"></p>
+</div>
+
+<!-- MAIN -->
+<div id="mainApp">
+<h1>Memory Allocation System 🚀</h1>
+
+<input id="blocks" placeholder="Blocks: 100,500,200">
+<input id="processes" placeholder="Processes: 120,50,300"><br>
+
+<select id="algo">
+<option value="first">First Fit</option>
+<option value="best">Best Fit</option>
+<option value="worst">Worst Fit</option>
+<option value="next">Next Fit</option>
+</select>
+
+<br>
+<button onclick="startAllocation()">Allocate</button>
+<button onclick="resetApp()">Reset</button>
+<button onclick="logout()">Logout</button>
+
+<div class="memory" id="memoryView"></div>
+
+<div id="tableOutput"></div>
+
+<div id="chartContainer">
+<canvas id="myChart"></canvas>
+</div>
+</div>
+
+<script>
+
+// AUTH
+function register(){
+    localStorage.setItem(user.value, pass.value);
+    msg.innerText="Registered!";
+}
+
+function login(){
+    if(localStorage.getItem(user.value)===pass.value){
+        authBox.style.display="none";
+        mainApp.style.display="block";
+    } else msg.innerText="Wrong login!";
+}
+
+function logout(){
+    location.reload();
+}
+
+// RESET
+function resetApp(){
+    memoryView.innerHTML="";
+    tableOutput.innerHTML="";
+    if(chartInstance) chartInstance.destroy();
+}
+
+// RENDER BLOCKS
+function renderBlocks(blocks){
+    memoryView.innerHTML="";
+    blocks.forEach((b,i)=>{
+        let div=document.createElement("div");
+        div.className="block";
+        div.id="b"+i;
+        div.innerText=b;
+        memoryView.appendChild(div);
+    });
+}
+
+// CHART
+let chartInstance=null;
+function drawChart(original,remaining){
+    let used=original.map((b,i)=>b-remaining[i]);
+
+    if(chartInstance) chartInstance.destroy();
+
+    chartInstance=new Chart(myChart,{
+        type:'pie',
+        data:{
+            labels:["Used","Free"],
+            datasets:[{
+                data:[
+                    used.reduce((a,b)=>a+b,0),
+                    remaining.reduce((a,b)=>a+b,0)
+                ]
+            }]
+        }
+    });
+}
+
+// MAIN LOGIC
+function startAllocation(){
+
+let blocks=document.getElementById("blocks").value.split(',').map(Number);
+let processes=document.getElementById("processes").value.split(',').map(Number);
+let algo=document.getElementById("algo").value;
+
+if(blocks.includes(NaN)||processes.includes(NaN)){
+    alert("Invalid Input!");
+    return;
+}
+
+let original=[...blocks];
+renderBlocks(blocks);
+
+let table="<table><tr><th>Process</th><th>Block</th></tr>";
+
+processes.forEach(p=>{
+    let index=-1;
+
+    if(algo==="first"){
+        index=blocks.findIndex(b=>b>=p);
+    }
+
+    if(algo==="best"){
+        let min=Infinity;
+        blocks.forEach((b,i)=>{
+            if(b>=p && b<min){min=b; index=i;}
+        });
+    }
+
+    if(algo==="worst"){
+        let max=-1;
+        blocks.forEach((b,i)=>{
+            if(b>=p && b>max){max=b; index=i;}
+        });
+    }
+
+    if(algo==="next"){
+        index=blocks.findIndex(b=>b>=p);
+    }
+
+    if(index!=-1){
+        blocks[index]-=p;
+        document.getElementById("b"+index).classList.add("used");
+        table+=`<tr><td>${p}</td><td>${index}</td></tr>`;
+    } else {
+        table+=`<tr><td>${p}</td><td>Not Allocated</td></tr>`;
+    }
+});
+
+table+="</table>";
+tableOutput.innerHTML=table;
+
+drawChart(original,blocks);
+}
+</script>
+
+</body>
+</html>
